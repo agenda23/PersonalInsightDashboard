@@ -14,17 +14,17 @@ const STORAGE_KEYS = {
 
 // Default values
 const DEFAULT_API_KEYS = {
-  newsApi: '',
   twelveData: '',
-  gnews: '',
-  openMeteo: '' // Not needed but kept for consistency
+  currents: ''
+  // Note: Open-Meteo API does not require an API key (free service)
+  // Note: Currents API provides 600 requests/day (recommended for news)
 }
 
 const DEFAULT_SETTINGS = {
   updateInterval: {
     market: 10, // minutes
     weather: 60, // minutes
-    news: 15 // minutes
+    news: 10 // minutes (minimum for API rate limiting)
   },
   autoUpdate: true,
   notifications: false,
@@ -360,7 +360,9 @@ export const setUpdateInterval = (type, minutes) => {
   if (!settings.updateInterval) {
     settings.updateInterval = { ...DEFAULT_SETTINGS.updateInterval }
   }
-  settings.updateInterval[type] = Math.max(1, Math.min(60, minutes)) // 1-60分の範囲
+  // ニュースは最低10分、その他は最低1分
+  const minInterval = type === 'news' ? 10 : 1
+  settings.updateInterval[type] = Math.max(minInterval, Math.min(60, minutes))
   return saveSettings(settings)
 }
 

@@ -2,18 +2,26 @@
 
 モダンなReactベースのパーソナルダッシュボードアプリケーション。市場データ、天気予報、ニュース、ToDoリストを一つの画面で管理できます。
 
-![Version](https://img.shields.io/badge/version-2.0-blue.svg)
-![React](https://img.shields.io/badge/React-19.1.0-61DAFB?logo=react)
+![Version](https://img.shields.io/badge/version-3.1-blue.svg)
+![React](https://img.shields.io/badge/React-18.3.1-61DAFB?logo=react)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
+
+## 🌐 Live Demo
+
+**公開URL**: [https://YOUR_USERNAME.github.io/PersonalInsightDashboard/](https://YOUR_USERNAME.github.io/PersonalInsightDashboard/)
+
+> デプロイ手順は [DEPLOY.md](./DEPLOY.md) を参照してください
 
 ## 📋 目次
 
+- [Live Demo](#live-demo)
 - [機能](#機能)
 - [デモ](#デモ)
 - [技術スタック](#技術スタック)
 - [セットアップ](#セットアップ)
 - [使い方](#使い方)
 - [API設定](#api設定)
+- [デプロイ](#デプロイ)
 - [プロジェクト構造](#プロジェクト構造)
 - [開発](#開発)
 - [カスタマイズ](#カスタマイズ)
@@ -22,22 +30,28 @@
 ## ✨ 機能
 
 ### 📊 市場データウィジェット
-- **為替**: USD/JPY（ドル円）のリアルタイムレート
+- **為替**: USD/JPY（ドル円）、EUR/USD（ユーロドル）のリアルタイムレート
 - **暗号資産**: BTC/USD（ビットコイン）価格
-- **株価指数**: 日経平均、S&P 500
+- **株価**: Apple (AAPL) 株価
 - 価格変動を色分け表示（上昇/下降）
+- 無料プラン対応の指標に最適化
 
 ### ☀️ 天気予報ウィジェット
 - 現在の天気、気温、降水確率
 - 3日間の週間予報
-- **日本全国47都道府県対応**（県庁所在地・主要都市）
-- 地域設定のカスタマイズ機能
+- **日本全国47都道府県対応**（県庁所在地の代表地点）
+- 都道府県単位での地域選択
 - Open-Meteo API使用（無料、APIキー不要）
 
 ### 📰 ニュースウィジェット
 - 最新ニュースヘッドライン（5件）
 - タイムスタンプ表示（○時間前）
-- News API対応
+- **10分間キャッシュ機能**でAPI呼び出しを削減
+- **最終取得時間表示**で情報の鮮度を確認
+- Currents API対応（600 requests/day）
+- GNews APIフォールバック対応
+- エラー時の詳細表示と再試行機能
+- 新しいタブでニュース記事を開く
 
 ### ✅ ToDoリストウィジェット
 - タスクの追加・削除・完了管理
@@ -66,7 +80,7 @@
 ## 🛠 技術スタック
 
 ### フロントエンド
-- **React** 19.1.0 - UIライブラリ
+- **React** 18.3.1 - UIライブラリ
 - **Vite** 6.3.5 - ビルドツール
 - **Tailwind CSS** - ユーティリティファーストCSSフレームワーク
 - **shadcn/ui** - UIコンポーネントライブラリ
@@ -75,11 +89,13 @@
 
 ### データ管理
 - **localStorage** - クライアントサイドデータ永続化
+- **キャッシュマネージャー** - APIデータの10分間キャッシュ
 
 ### API統合
-- **News API** - ニュースデータ取得
-- **Twelve Data API** - 市場データ（為替・株価）取得
-- **Open-Meteo API** - 天気予報データ取得（無料）
+- **Currents API** - ニュースデータ取得（600 requests/day・日本語対応）
+- **GNews API** - ニュースフォールバック（100 requests/day）
+- **Twelve Data API** - 市場データ（為替・株価）取得（無料プラン対応）
+- **Open-Meteo API** - 天気予報データ取得（無料・APIキー不要）
 
 ## 🚀 セットアップ
 
@@ -131,15 +147,17 @@ npm run preview
 1. **APIキーの設定**
    - 画面右上の「設定」ボタンをクリック
    - 「API設定」セクションで以下のAPIキーを入力:
-     - News API キー（ニュース取得用）
+     - Currents API キー（ニュース取得用・推奨）
      - Twelve Data API キー（市場データ取得用）
+   - 天気予報はAPIキー不要で利用できます
 
 2. **地域設定**
-   - 「地域設定」セクションで都道府県と市区町村を選択
+   - 「地域設定」セクションで都道府県を選択
    - 天気予報がその地域の情報に更新されます
 
 3. **自動更新の設定**
    - 「自動更新設定」セクションで各ウィジェットの更新間隔を設定
+   - ニュースは最低10分間隔（キャッシュ機能により）
    - スイッチで自動更新のオン・オフを切り替え
 
 ### 日常的な使用
@@ -171,6 +189,48 @@ npm run preview
 
 天気予報機能は[Open-Meteo API](https://open-meteo.com/)を使用しています。
 **APIキー不要**で無料で利用できます。
+
+## 🚀 デプロイ
+
+### GitHub Pagesへのデプロイ
+
+このプロジェクトはGitHub Pagesに簡単にデプロイできます。
+
+#### 1. GitHubリポジトリを作成
+
+```bash
+git init
+git remote add origin https://github.com/YOUR_USERNAME/PersonalInsightDashboard.git
+git add .
+git commit -m "Initial commit"
+git branch -M main
+git push -u origin main
+```
+
+#### 2. GitHub Pagesを有効化
+
+1. GitHubリポジトリの **Settings** → **Pages**
+2. **Source** を **GitHub Actions** に設定
+
+#### 3. 自動デプロイ
+
+`main`ブランチにプッシュすると自動的にデプロイされます！
+
+```bash
+git add .
+git commit -m "Update"
+git push
+```
+
+**公開URL**: `https://YOUR_USERNAME.github.io/PersonalInsightDashboard/`
+
+詳細な手順は [DEPLOY.md](./DEPLOY.md) を参照してください。
+
+### 注意事項
+
+- **APIキー**: ユーザーごとにブラウザのlocalStorageに保存されます
+- **セキュリティ**: コード内にAPIキーを含めないでください
+- **キャッシュ**: ニュースデータは10分間キャッシュされます
 
 ## 📁 プロジェクト構造
 

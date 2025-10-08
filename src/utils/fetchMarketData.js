@@ -1,6 +1,6 @@
 // Market data fetching utilities
 const API_ENDPOINTS = {
-  TWELVE_DATA: 'https://api.twelvedata.com/v1',
+  TWELVE_DATA: 'https://api.twelvedata.com',
   ALPHA_VANTAGE: 'https://www.alphavantage.co/query',
   YAHOO_FINANCE: 'https://query1.finance.yahoo.com/v8/finance/chart'
 }
@@ -39,7 +39,7 @@ export const fetchUSDJPY = async () => {
       changePercent: parseFloat(data.percent_change)
     }
   } catch (error) {
-    console.error('Error fetching USD/JPY:', error)
+    console.warn('⚠️ USD/JPY取得エラー: モックデータを表示します。', error.message)
     // Return mock data as fallback
     return {
       value: 149.85,
@@ -77,7 +77,7 @@ export const fetchBTCUSD = async () => {
       changePercent: parseFloat(data.percent_change)
     }
   } catch (error) {
-    console.error('Error fetching BTC/USD:', error)
+    console.warn('⚠️ BTC/USD取得エラー: モックデータを表示します。', error.message)
     // Return mock data as fallback
     return {
       value: 43250,
@@ -87,8 +87,8 @@ export const fetchBTCUSD = async () => {
   }
 }
 
-// Fetch Nikkei 225
-export const fetchNikkei = async () => {
+// Fetch Apple Stock (AAPL)
+export const fetchAAPL = async () => {
   try {
     const apiKey = getApiKey('twelveData')
     if (!apiKey) {
@@ -96,7 +96,7 @@ export const fetchNikkei = async () => {
     }
 
     const response = await fetch(
-      `${API_ENDPOINTS.TWELVE_DATA}/quote?symbol=N225&apikey=${apiKey}`
+      `${API_ENDPOINTS.TWELVE_DATA}/quote?symbol=AAPL&apikey=${apiKey}`
     )
     
     if (!response.ok) {
@@ -115,18 +115,18 @@ export const fetchNikkei = async () => {
       changePercent: parseFloat(data.percent_change)
     }
   } catch (error) {
-    console.error('Error fetching Nikkei:', error)
+    console.warn('⚠️ Apple株（AAPL）取得エラー: モックデータを表示します。', error.message)
     // Return mock data as fallback
     return {
-      value: 33486,
-      change: 125,
-      changePercent: 0.37
+      value: 185.92,
+      change: 2.34,
+      changePercent: 1.27
     }
   }
 }
 
-// Fetch S&P 500
-export const fetchSP500 = async () => {
+// Fetch EUR/USD exchange rate
+export const fetchEURUSD = async () => {
   try {
     const apiKey = getApiKey('twelveData')
     if (!apiKey) {
@@ -134,7 +134,7 @@ export const fetchSP500 = async () => {
     }
 
     const response = await fetch(
-      `${API_ENDPOINTS.TWELVE_DATA}/quote?symbol=SPX&apikey=${apiKey}`
+      `${API_ENDPOINTS.TWELVE_DATA}/quote?symbol=EUR/USD&apikey=${apiKey}`
     )
     
     if (!response.ok) {
@@ -153,12 +153,12 @@ export const fetchSP500 = async () => {
       changePercent: parseFloat(data.percent_change)
     }
   } catch (error) {
-    console.error('Error fetching S&P 500:', error)
+    console.warn('⚠️ EUR/USD取得エラー: モックデータを表示します。', error.message)
     // Return mock data as fallback
     return {
-      value: 4567,
-      change: 23,
-      changePercent: 0.51
+      value: 1.0876,
+      change: 0.0012,
+      changePercent: 0.11
     }
   }
 }
@@ -166,18 +166,18 @@ export const fetchSP500 = async () => {
 // Fetch all market data
 export const fetchAllMarketData = async () => {
   try {
-    const [usdJpy, btcUsd, nikkei, sp500] = await Promise.all([
+    const [usdJpy, btcUsd, aapl, eurUsd] = await Promise.all([
       fetchUSDJPY(),
       fetchBTCUSD(),
-      fetchNikkei(),
-      fetchSP500()
+      fetchAAPL(),
+      fetchEURUSD()
     ])
 
     return {
       usdJpy,
       btcUsd,
-      nikkei,
-      sp500
+      aapl,
+      eurUsd
     }
   } catch (error) {
     console.error('Error fetching market data:', error)
@@ -185,8 +185,8 @@ export const fetchAllMarketData = async () => {
     return {
       usdJpy: { value: 149.85, change: 0.12, changePercent: 0.08 },
       btcUsd: { value: 43250, change: -850, changePercent: -1.93 },
-      nikkei: { value: 33486, change: 125, changePercent: 0.37 },
-      sp500: { value: 4567, change: 23, changePercent: 0.51 }
+      aapl: { value: 185.92, change: 2.34, changePercent: 1.27 },
+      eurUsd: { value: 1.0876, change: 0.0012, changePercent: 0.11 }
     }
   }
 }

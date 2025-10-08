@@ -91,6 +91,65 @@ export const getCitiesByPrefecture = (prefecture) => {
 // デフォルト都市（東京）
 export const DEFAULT_CITY = JAPAN_CITIES.find(city => city.name === '東京都')
 
+// 都道府県ごとの代表都市（県庁所在地など）
+export const PREFECTURE_CITIES = [
+  { prefecture: '北海道', latitude: 43.0642, longitude: 141.3469 },      // 札幌市
+  { prefecture: '青森県', latitude: 40.8244, longitude: 140.7400 },      // 青森市
+  { prefecture: '岩手県', latitude: 39.7036, longitude: 141.1527 },      // 盛岡市
+  { prefecture: '宮城県', latitude: 38.2682, longitude: 140.8694 },      // 仙台市
+  { prefecture: '秋田県', latitude: 39.7186, longitude: 140.1024 },      // 秋田市
+  { prefecture: '山形県', latitude: 38.2404, longitude: 140.3633 },      // 山形市
+  { prefecture: '福島県', latitude: 37.7608, longitude: 140.4747 },      // 福島市
+  { prefecture: '茨城県', latitude: 36.3418, longitude: 140.4468 },      // 水戸市
+  { prefecture: '栃木県', latitude: 36.5658, longitude: 139.8836 },      // 宇都宮市
+  { prefecture: '群馬県', latitude: 36.3911, longitude: 139.0608 },      // 前橋市
+  { prefecture: '埼玉県', latitude: 35.8617, longitude: 139.6455 },      // さいたま市
+  { prefecture: '千葉県', latitude: 35.6074, longitude: 140.1065 },      // 千葉市
+  { prefecture: '東京都', latitude: 35.6762, longitude: 139.6503 },      // 東京都
+  { prefecture: '神奈川県', latitude: 35.4478, longitude: 139.6425 },    // 横浜市
+  { prefecture: '新潟県', latitude: 37.9161, longitude: 139.0364 },      // 新潟市
+  { prefecture: '富山県', latitude: 36.6959, longitude: 137.2139 },      // 富山市
+  { prefecture: '石川県', latitude: 36.5944, longitude: 136.6256 },      // 金沢市
+  { prefecture: '福井県', latitude: 36.0652, longitude: 136.2217 },      // 福井市
+  { prefecture: '山梨県', latitude: 35.6914, longitude: 138.6811 },      // 山梨市
+  { prefecture: '長野県', latitude: 36.6513, longitude: 138.1810 },      // 長野市
+  { prefecture: '岐阜県', latitude: 35.3912, longitude: 136.7223 },      // 岐阜市
+  { prefecture: '静岡県', latitude: 34.9756, longitude: 138.3828 },      // 静岡市
+  { prefecture: '愛知県', latitude: 35.1815, longitude: 136.9066 },      // 名古屋市
+  { prefecture: '三重県', latitude: 34.7303, longitude: 136.5086 },      // 津市
+  { prefecture: '滋賀県', latitude: 35.0045, longitude: 135.8686 },      // 大津市
+  { prefecture: '京都府', latitude: 35.0116, longitude: 135.7681 },      // 京都市
+  { prefecture: '大阪府', latitude: 34.6937, longitude: 135.5023 },      // 大阪市
+  { prefecture: '兵庫県', latitude: 34.6901, longitude: 135.1956 },      // 神戸市
+  { prefecture: '奈良県', latitude: 34.6851, longitude: 135.8048 },      // 奈良市
+  { prefecture: '和歌山県', latitude: 34.2261, longitude: 135.1675 },    // 和歌山市
+  { prefecture: '鳥取県', latitude: 35.5014, longitude: 134.2378 },      // 鳥取市
+  { prefecture: '島根県', latitude: 35.4723, longitude: 133.0505 },      // 松江市
+  { prefecture: '岡山県', latitude: 34.6617, longitude: 133.9341 },      // 岡山市
+  { prefecture: '広島県', latitude: 34.3853, longitude: 132.4553 },      // 広島市
+  { prefecture: '山口県', latitude: 34.1858, longitude: 131.4706 },      // 山口市
+  { prefecture: '徳島県', latitude: 34.0658, longitude: 134.5594 },      // 徳島市
+  { prefecture: '香川県', latitude: 34.3401, longitude: 134.0434 },      // 高松市
+  { prefecture: '愛媛県', latitude: 33.8416, longitude: 132.7657 },      // 松山市
+  { prefecture: '高知県', latitude: 33.5597, longitude: 133.5311 },      // 高知市
+  { prefecture: '福岡県', latitude: 33.5904, longitude: 130.4017 },      // 福岡市
+  { prefecture: '佐賀県', latitude: 33.2494, longitude: 130.2989 },      // 佐賀市
+  { prefecture: '長崎県', latitude: 32.7503, longitude: 129.8779 },      // 長崎市
+  { prefecture: '熊本県', latitude: 32.7898, longitude: 130.7417 },      // 熊本市
+  { prefecture: '大分県', latitude: 33.2382, longitude: 131.6126 },      // 大分市
+  { prefecture: '宮崎県', latitude: 31.9077, longitude: 131.4202 },      // 宮崎市
+  { prefecture: '鹿児島県', latitude: 31.5966, longitude: 130.5571 },    // 鹿児島市
+  { prefecture: '沖縄県', latitude: 26.2124, longitude: 127.6792 }       // 那覇市
+]
+
+// 都道府県名のリスト（50音順）
+export const ALL_PREFECTURES = PREFECTURE_CITIES.map(p => p.prefecture)
+
+// 都道府県で検索（緯度経度を取得）
+export const getPrefectureData = (prefecture) => {
+  return PREFECTURE_CITIES.find(p => p.prefecture === prefecture)
+}
+
 // 地域別グループ
 export const REGIONS = {
   '北海道': ['北海道'],

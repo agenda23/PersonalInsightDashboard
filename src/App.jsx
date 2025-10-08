@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch.jsx'
 import { Slider } from '@/components/ui/slider.jsx'
 import { Settings, Sun, Moon, RefreshCw, TrendingUp, Cloud, Newspaper, CheckSquare, MapPin, Clock, GripVertical } from 'lucide-react'
-import { JAPAN_CITIES, PREFECTURES, getCitiesByPrefecture } from './utils/japanCities.js'
+import { ALL_PREFECTURES, getPrefectureData } from './utils/japanCities.js'
 import { 
   getApiKeys, saveApiKeys, getTodos, saveTodos, addTodo, toggleTodo, deleteTodo, getTodoStats,
   getTheme, saveTheme, getSettings, saveSettings, getLocation, setLocation,
@@ -35,14 +35,13 @@ function App() {
   // Settings state
   const [settings, setSettingsState] = useState(getSettings())
   const [selectedPrefecture, setSelectedPrefecture] = useState(settings.location?.prefecture || '東京都')
-  const [selectedCity, setSelectedCity] = useState(settings.location?.cityName || '東京都')
   
   // Data state
   const [marketData, setMarketData] = useState({
     usdJpy: { value: 149.85, change: 0.12, changePercent: 0.08 },
     btcUsd: { value: 43250, change: -850, changePercent: -1.93 },
-    nikkei: { value: 33486, change: 125, changePercent: 0.37 },
-    sp500: { value: 4567, change: 23, changePercent: 0.51 }
+    aapl: { value: 185.92, change: 2.34, changePercent: 1.27 },
+    eurUsd: { value: 1.0876, change: 0.0012, changePercent: 0.11 }
   })
 
   const [weatherData, setWeatherData] = useState({
@@ -54,13 +53,11 @@ function App() {
     ]
   })
 
-  const [newsData, setNewsData] = useState([
-    { id: 1, title: '日経平均株価が続伸、年初来高値を更新', url: '#', time: '2時間前' },
-    { id: 2, title: 'ドル円相場、149円台で推移', url: '#', time: '3時間前' },
-    { id: 3, title: 'ビットコイン価格が調整局面入り', url: '#', time: '4時間前' },
-    { id: 4, title: '今週の天気予報：気温の変動に注意', url: '#', time: '5時間前' },
-    { id: 5, title: '新しい経済政策の発表について', url: '#', time: '6時間前' }
-  ])
+  const [newsData, setNewsData] = useState(null)
+  const [newsError, setNewsError] = useState(null)
+  const [newsLastFetch, setNewsLastFetch] = useState(null)
+  const [marketLastFetch, setMarketLastFetch] = useState(null)
+  const [weatherLastFetch, setWeatherLastFetch] = useState(null)
 
   // Auto-update intervals
   const [updateIntervals, setUpdateIntervalsState] = useState(getUpdateIntervals())
@@ -79,6 +76,25 @@ function App() {
     document.documentElement.classList.toggle('dark', theme === 'dark')
   }, [theme])
 
+  // Initial data load
+  useEffect(() => {
+    const loadInitialData = async () => {
+      try {
+        const newsResult = await fetchNews('general', 5)
+        setNewsData(newsResult)
+        setNewsError(null)
+        setNewsLastFetch(new Date())
+        console.log('✅ Initial news data loaded:', newsResult.length, 'articles')
+      } catch (error) {
+        console.error('Failed to load initial news data:', error)
+        setNewsData(null)
+        setNewsError(error.message)
+      }
+    }
+    
+    loadInitialData()
+  }, [])
+
   // Auto-update data
   useEffect(() => {
     if (!autoUpdateEnabled) return
@@ -91,6 +107,7 @@ function App() {
         try {
           const data = await fetchAllMarketData()
           setMarketData(data)
+          setMarketLastFetch(new Date())
         } catch (error) {
           console.error('Auto-update market data failed:', error)
         }
@@ -103,6 +120,7 @@ function App() {
         try {
           const data = await fetchWeatherData()
           setWeatherData(data)
+          setWeatherLastFetch(new Date())
         } catch (error) {
           console.error('Auto-update weather data failed:', error)
         }
@@ -115,8 +133,11 @@ function App() {
         try {
           const data = await fetchNews('general', 5)
           setNewsData(data)
+          setNewsError(null)
+          setNewsLastFetch(new Date())
         } catch (error) {
           console.error('Auto-update news data failed:', error)
+          setNewsError(error.message)
         }
       }, updateIntervals.news * 60 * 1000))
     }
@@ -167,12 +188,18 @@ function App() {
 
       if (marketDataResult.status === 'fulfilled') {
         setMarketData(marketDataResult.value)
+        setMarketLastFetch(new Date())
       }
       if (weatherDataResult.status === 'fulfilled') {
         setWeatherData(weatherDataResult.value)
+        setWeatherLastFetch(new Date())
       }
       if (newsDataResult.status === 'fulfilled') {
         setNewsData(newsDataResult.value)
+        setNewsError(null)
+        setNewsLastFetch(new Date())
+      } else {
+        setNewsError(newsDataResult.reason?.message || 'ニュース取得に失敗しました')
       }
     } catch (error) {
       console.error('Error refreshing data:', error)
@@ -181,26 +208,28 @@ function App() {
     }
   }
 
-  const handleLocationChange = (prefecture, cityName) => {
-    const city = JAPAN_CITIES.find(c => c.name === cityName && c.prefecture === prefecture)
-    if (city) {
-      setLocation(city.name, city.prefecture, city.latitude, city.longitude)
+  const handleLocationChange = (prefecture) => {
+    const prefectureData = getPrefectureData(prefecture)
+    if (prefectureData) {
+      setLocation(prefecture, prefecture, prefectureData.latitude, prefectureData.longitude)
       setSelectedPrefecture(prefecture)
-      setSelectedCity(cityName)
       
       // Update settings state
       const newSettings = { ...settings }
       newSettings.location = {
-        cityName: city.name,
-        prefecture: city.prefecture,
-        latitude: city.latitude,
-        longitude: city.longitude
+        cityName: prefecture,
+        prefecture: prefecture,
+        latitude: prefectureData.latitude,
+        longitude: prefectureData.longitude
       }
       setSettingsState(newSettings)
       saveSettings(newSettings)
       
       // Refresh weather data
-      fetchWeatherData().then(data => setWeatherData(data)).catch(console.error)
+      fetchWeatherData().then(data => {
+        setWeatherData(data)
+        setWeatherLastFetch(new Date())
+      }).catch(console.error)
     }
   }
 
@@ -254,25 +283,60 @@ function App() {
                   <TrendingUp className="h-5 w-5" />
                   市場データ
                 </CardTitle>
-                <CardDescription>為替・株価・暗号資産の現在値</CardDescription>
+                <CardDescription>為替・米国株・暗号資産の現在値（無料プラン対応）</CardDescription>
               </CardHeader>
               <CardContent>
+                {marketLastFetch && apiKeys.twelveData && (
+                  <div className="mb-3 text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                    <Clock className="h-3 w-3" />
+                    最終取得: {marketLastFetch.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })}
+                  </div>
+                )}
+                {!apiKeys.twelveData ? (
+                  <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800 mb-4">
+                    <div className="flex items-start gap-3">
+                      <div className="text-yellow-600 dark:text-yellow-400 text-xl">⚠️</div>
+                      <div className="flex-1">
+                        <p className="text-sm font-semibold text-yellow-900 dark:text-yellow-100 mb-1">
+                          APIキーが未設定です
+                        </p>
+                        <p className="text-xs text-yellow-800 dark:text-yellow-200 mb-2">
+                          実際の市場データを取得するには、Twelve Data APIキーが必要です。現在はモックデータを表示しています。
+                        </p>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setActiveTab('settings')}
+                          className="text-xs h-7 bg-yellow-100 dark:bg-yellow-900/40 border-yellow-300 dark:border-yellow-700 hover:bg-yellow-200 dark:hover:bg-yellow-900/60"
+                        >
+                          設定画面でAPIキーを登録
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                   {Object.entries(marketData).map(([key, data]) => {
                     const labels = {
                       usdJpy: 'USD/JPY',
                       btcUsd: 'BTC/USD',
-                      nikkei: '日経平均',
-                      sp500: 'S&P 500'
+                      aapl: 'Apple株',
+                      eurUsd: 'EUR/USD'
+                    }
+                    const formatValue = (key, value) => {
+                      if (key === 'btcUsd') return `$${value.toLocaleString()}`
+                      if (key === 'aapl') return `$${value.toFixed(2)}`
+                      if (key === 'eurUsd') return value.toFixed(4)
+                      return value.toLocaleString()
                     }
                     return (
                       <div key={key} className="text-center p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
                         <div className="text-sm text-gray-600 dark:text-gray-400">{labels[key]}</div>
                         <div className="text-xl font-bold">
-                          {key === 'btcUsd' ? `$${data.value.toLocaleString()}` : data.value.toLocaleString()}
+                          {formatValue(key, data.value)}
                         </div>
                         <div className={`text-sm ${data.change >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                          {data.change >= 0 ? '+' : ''}{data.change} ({data.changePercent}%)
+                          {data.change >= 0 ? '+' : ''}{data.change.toFixed(2)} ({data.changePercent}%)
                         </div>
                       </div>
                     )
@@ -303,6 +367,12 @@ function App() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
+                {weatherLastFetch && (
+                  <div className="mb-3 text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                    <Clock className="h-3 w-3" />
+                    最終取得: {weatherLastFetch.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })}
+                  </div>
+                )}
                 <div className="space-y-4">
                   <div className="text-center p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
                     <div className="text-3xl mb-2">{weatherData.current.icon}</div>
@@ -347,16 +417,76 @@ function App() {
                 <CardDescription>最新のヘッドライン</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3">
-                  {newsData.slice(0, 5).map((news) => (
-                    <div key={news.id} className="border-b border-gray-200 dark:border-gray-700 pb-3 last:border-b-0">
-                      <a href={news.url} className="text-sm font-medium hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
-                        {news.title}
-                      </a>
-                      <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">{news.time}</div>
+                {!apiKeys.currents ? (
+                  <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800">
+                    <div className="flex items-start gap-3">
+                      <div className="text-yellow-600 dark:text-yellow-400 text-xl">⚠️</div>
+                      <div className="flex-1">
+                        <p className="text-sm font-semibold text-yellow-900 dark:text-yellow-100 mb-1">
+                          APIキーが未設定です
+                        </p>
+                        <p className="text-xs text-yellow-800 dark:text-yellow-200 mb-2">
+                          ニュースデータを取得するには、Currents APIキーが必要です。
+                        </p>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setActiveTab('settings')}
+                          className="text-xs h-7 bg-yellow-100 dark:bg-yellow-900/40 border-yellow-300 dark:border-yellow-700 hover:bg-yellow-200 dark:hover:bg-yellow-900/60"
+                        >
+                          設定画面でAPIキーを登録
+                        </Button>
+                      </div>
                     </div>
-                  ))}
-                </div>
+                  </div>
+                ) : newsError ? (
+                  <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
+                    <div className="flex items-start gap-3">
+                      <div className="text-red-600 dark:text-red-400 text-xl">❌</div>
+                      <div className="flex-1">
+                        <p className="text-sm font-semibold text-red-900 dark:text-red-100 mb-1">
+                          ニュース取得エラー
+                        </p>
+                        <p className="text-xs text-red-800 dark:text-red-200 mb-2">
+                          {newsError}
+                        </p>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={refreshData}
+                          disabled={isRefreshing}
+                          className="text-xs h-7 bg-red-100 dark:bg-red-900/40 border-red-300 dark:border-red-700 hover:bg-red-200 dark:hover:bg-red-900/60"
+                        >
+                          再試行
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ) : newsData && newsData.length > 0 ? (
+                  <>
+                    {newsLastFetch && (
+                      <div className="mb-3 text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        最終取得: {newsLastFetch.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })}
+                      </div>
+                    )}
+                    <div className="space-y-3">
+                      {newsData.slice(0, 5).map((news) => (
+                        <div key={news.id} className="border-b border-gray-200 dark:border-gray-700 pb-3 last:border-b-0">
+                          <a href={news.url} target="_blank" rel="noopener noreferrer" className="text-sm font-medium hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+                            {news.title}
+                          </a>
+                          <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">{news.time}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <div className="p-4 text-center text-gray-500 dark:text-gray-400">
+                    <p className="text-sm">ニュースデータを読み込んでいます...</p>
+                    <p className="text-xs mt-2">データが表示されない場合は、更新ボタンを押してください。</p>
+                  </div>
+                )}
               </CardContent>
             </Card>
           )}
@@ -505,18 +635,24 @@ function App() {
                 <CardTitle>API設定</CardTitle>
                 <CardDescription>
                   各種APIキーを設定してください。設定したキーはブラウザのlocalStorageに保存されます。
+                  天気予報（Open-Meteo API）はAPIキー不要で無料で利用できます。
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="newsApi">News API キー</Label>
+                  <Label htmlFor="currents">Currents API キー</Label>
                   <Input
-                    id="newsApi"
+                    id="currents"
                     type="password"
-                    placeholder="ニュースデータ取得用のAPIキー"
-                    value={apiKeys.newsApi}
-                    onChange={(e) => handleApiKeyChange('newsApi', e.target.value)}
+                    placeholder="日本語ニュースデータ取得用のAPIキー"
+                    value={apiKeys.currents || ''}
+                    onChange={(e) => handleApiKeyChange('currents', e.target.value)}
                   />
+                  <p className="text-xs text-muted-foreground">
+                    <a href="https://currentsapi.services/en" target="_blank" rel="noopener noreferrer" className="underline hover:text-primary">
+                      CurrentsAPI.services
+                    </a> で無料のAPIキーを取得できます（600 requests/day・日本語対応・10分間キャッシュ）
+                  </p>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="twelveData">Twelve Data API キー</Label>
@@ -524,9 +660,19 @@ function App() {
                     id="twelveData"
                     type="password"
                     placeholder="株価・為替データ取得用のAPIキー"
-                    value={apiKeys.twelveData}
+                    value={apiKeys.twelveData || ''}
                     onChange={(e) => handleApiKeyChange('twelveData', e.target.value)}
                   />
+                  <p className="text-xs text-muted-foreground">
+                    <a href="https://twelvedata.com/" target="_blank" rel="noopener noreferrer" className="underline hover:text-primary">
+                      TwelveData.com
+                    </a> で無料のAPIキーを取得できます
+                  </p>
+                </div>
+                <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                  <p className="text-sm text-blue-900 dark:text-blue-100">
+                    <strong>💡 ヒント:</strong> 天気予報はAPIキーなしで実際のデータが取得できます。ニュースデータは10分間キャッシュされ、API呼び出しを節約します。
+                  </p>
                 </div>
               </CardContent>
             </Card>
@@ -543,43 +689,23 @@ function App() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>都道府県</Label>
-                    <Select value={selectedPrefecture} onValueChange={setSelectedPrefecture}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="都道府県を選択" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {PREFECTURES.map(prefecture => (
-                          <SelectItem key={prefecture} value={prefecture}>
-                            {prefecture}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>市区町村</Label>
-                    <Select 
-                      value={selectedCity} 
-                      onValueChange={(city) => handleLocationChange(selectedPrefecture, city)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="市区町村を選択" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {getCitiesByPrefecture(selectedPrefecture).map(city => (
-                          <SelectItem key={city.name} value={city.name}>
-                            {city.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                <div className="space-y-2">
+                  <Label>都道府県を選択</Label>
+                  <Select value={selectedPrefecture} onValueChange={handleLocationChange}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="都道府県を選択" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {ALL_PREFECTURES.map(prefecture => (
+                        <SelectItem key={prefecture} value={prefecture}>
+                          {prefecture}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="text-sm text-gray-600 dark:text-gray-400">
-                  現在の設定: {settings.location?.cityName || '東京都'}, {settings.location?.prefecture || '東京都'}
+                  現在の設定: {settings.location?.prefecture || '東京都'}
                 </div>
               </CardContent>
             </Card>
@@ -632,12 +758,12 @@ function App() {
                     </div>
                     
                     <div className="space-y-3">
-                      <Label>ニュース更新間隔: {updateIntervals.news}分</Label>
+                      <Label>ニュース更新間隔: {updateIntervals.news}分（最低10分・キャッシュ有効）</Label>
                       <Slider
                         value={[updateIntervals.news]}
                         onValueChange={([value]) => handleUpdateIntervalChange('news', value)}
                         max={60}
-                        min={1}
+                        min={10}
                         step={1}
                         className="w-full"
                       />

@@ -1,6 +1,8 @@
 // News data fetching utilities
-const NEWS_API_ENDPOINT = 'https://newsapi.org/v2'
+import { getCachedData, setCachedData, CACHE_KEYS } from './cacheManager.js'
+
 const GNEWS_API_ENDPOINT = 'https://gnews.io/api/v4'
+const CURRENTS_API_ENDPOINT = 'https://api.currentsapi.services/v1'
 
 // Get API key from localStorage
 const getApiKey = (service) => {
@@ -25,16 +27,20 @@ const getTimeAgo = (dateString) => {
   }
 }
 
-// Fetch news from NewsAPI
-export const fetchNewsFromNewsAPI = async (category = 'general', country = 'jp', pageSize = 10) => {
+// Fetch news from Currents API (600 requests/day - Primary)
+export const fetchNewsFromCurrents = async (category = 'general', lang = 'ja', maxItems = 10) => {
   try {
-    const apiKey = getApiKey('newsApi')
+    const apiKey = getApiKey('currents')
     if (!apiKey) {
-      throw new Error('NewsAPI key not configured')
+      throw new Error('Currents API key not configured')
     }
 
+    console.log(`📰 Currents APIで日本語ニュースを検索中...`)
+    
     const response = await fetch(
-      `${NEWS_API_ENDPOINT}/top-headlines?country=${country}&category=${category}&pageSize=${pageSize}&apiKey=${apiKey}`
+      `${CURRENTS_API_ENDPOINT}/latest-news?` +
+      `language=${lang}&` +
+      `apiKey=${apiKey}`
     )
     
     if (!response.ok) {
@@ -44,22 +50,29 @@ export const fetchNewsFromNewsAPI = async (category = 'general', country = 'jp',
     const data = await response.json()
     
     if (data.status === 'error') {
-      throw new Error(data.message || 'NewsAPI error')
+      throw new Error(data.message || 'Currents API error')
     }
     
-    return data.articles.map((article, index) => ({
+    // Check if news array exists and is not empty
+    if (!data.news || data.news.length === 0) {
+      throw new Error('No articles found')
+    }
+    
+    console.log(`✅ Currents APIから${data.news.length}件の記事を取得しました`)
+    
+    return data.news.slice(0, maxItems).map((article, index) => ({
       id: index + 1,
       title: article.title,
       description: article.description,
       url: article.url,
-      urlToImage: article.urlToImage,
-      publishedAt: article.publishedAt,
-      time: getTimeAgo(article.publishedAt),
-      source: article.source.name,
-      category: category
+      urlToImage: article.image !== 'None' ? article.image : null,
+      publishedAt: article.published,
+      time: getTimeAgo(article.published),
+      source: article.author || 'Currents',
+      category: article.category && article.category.length > 0 ? article.category[0] : category
     }))
   } catch (error) {
-    console.error('Error fetching news from NewsAPI:', error)
+    console.error('Error fetching news from Currents API:', error)
     throw error
   }
 }
@@ -86,6 +99,11 @@ export const fetchNewsFromGNews = async (category = 'general', lang = 'ja', max 
       throw new Error(data.errors[0] || 'GNews API error')
     }
     
+    // Check if articles array exists and is not empty
+    if (!data.articles || data.articles.length === 0) {
+      throw new Error('No articles found')
+    }
+    
     return data.articles.map((article, index) => ({
       id: index + 1,
       title: article.title,
@@ -103,139 +121,43 @@ export const fetchNewsFromGNews = async (category = 'general', lang = 'ja', max 
   }
 }
 
-// Fetch news with fallback to mock data
+// Fetch news with caching and fallback to mock data
 export const fetchNews = async (category = 'general', maxItems = 10) => {
+  // Check cache first
+  const cachedNews = getCachedData(CACHE_KEYS.NEWS)
+  if (cachedNews) {
+    return cachedNews
+  }
+
   try {
-    // Try NewsAPI first
+    // 1. Currents API（600 requests/day）を試す
     try {
-      return await fetchNewsFromNewsAPI(category, 'jp', maxItems)
-    } catch (newsApiError) {
-      console.warn('NewsAPI failed, trying GNews:', newsApiError.message)
+      const news = await fetchNewsFromCurrents(category, 'ja', maxItems)
+      // Cache the successful result
+      setCachedData(CACHE_KEYS.NEWS, news)
+      return news
+    } catch (currentsError) {
+      console.warn('⚠️ Currents API failed:', currentsError.message)
       
-      // Try GNews as fallback
+      // 2. GNews API（フォールバック）を試す
       try {
-        return await fetchNewsFromGNews(category, 'ja', maxItems)
+        console.log('📰 GNews APIを試行中...')
+        const news = await fetchNewsFromGNews(category, 'ja', maxItems)
+        // Cache the successful result
+        setCachedData(CACHE_KEYS.NEWS, news)
+        return news
       } catch (gnewsError) {
-        console.warn('GNews also failed:', gnewsError.message)
+        console.warn('⚠️ GNews failed:', gnewsError.message)
         throw new Error('All news APIs failed')
       }
     }
   } catch (error) {
-    console.error('Error fetching news:', error)
+    console.error('❌ ニュース取得失敗:', error.message)
+    console.info('💡 実際のニュースを取得するには、設定画面でCurrents APIキーを登録してください')
+    console.info('💡 Currents API（600 requests/day）推奨、データは10分間キャッシュされます')
     
-    // Return mock data as fallback
-    return [
-      {
-        id: 1,
-        title: '日経平均株価が続伸、年初来高値を更新',
-        description: '東京株式市場で日経平均株価が続伸し、年初来高値を更新しました。',
-        url: '#',
-        urlToImage: null,
-        publishedAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-        time: '2時間前',
-        source: 'モックニュース',
-        category: 'business'
-      },
-      {
-        id: 2,
-        title: 'ドル円相場、149円台で推移',
-        description: '外国為替市場でドル円相場は149円台で推移しています。',
-        url: '#',
-        urlToImage: null,
-        publishedAt: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(),
-        time: '3時間前',
-        source: 'モックニュース',
-        category: 'business'
-      },
-      {
-        id: 3,
-        title: 'ビットコイン価格が調整局面入り',
-        description: '暗号資産市場でビットコイン価格が調整局面に入っています。',
-        url: '#',
-        urlToImage: null,
-        publishedAt: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
-        time: '4時間前',
-        source: 'モックニュース',
-        category: 'technology'
-      },
-      {
-        id: 4,
-        title: '今週の天気予報：気温の変動に注意',
-        description: '今週は気温の変動が大きくなる見込みです。',
-        url: '#',
-        urlToImage: null,
-        publishedAt: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(),
-        time: '5時間前',
-        source: 'モックニュース',
-        category: 'general'
-      },
-      {
-        id: 5,
-        title: '新しい経済政策の発表について',
-        description: '政府から新しい経済政策が発表されました。',
-        url: '#',
-        urlToImage: null,
-        publishedAt: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(),
-        time: '6時間前',
-        source: 'モックニュース',
-        category: 'general'
-      },
-      {
-        id: 6,
-        title: 'テクノロジー業界の最新動向',
-        description: 'テクノロジー業界で注目すべき最新の動向をお伝えします。',
-        url: '#',
-        urlToImage: null,
-        publishedAt: new Date(Date.now() - 7 * 60 * 60 * 1000).toISOString(),
-        time: '7時間前',
-        source: 'モックニュース',
-        category: 'technology'
-      },
-      {
-        id: 7,
-        title: 'スポーツ界の話題：注目の試合結果',
-        description: '今日行われた注目の試合結果をお伝えします。',
-        url: '#',
-        urlToImage: null,
-        publishedAt: new Date(Date.now() - 8 * 60 * 60 * 1000).toISOString(),
-        time: '8時間前',
-        source: 'モックニュース',
-        category: 'sports'
-      },
-      {
-        id: 8,
-        title: '健康に関する最新研究結果',
-        description: '健康に関する最新の研究結果が発表されました。',
-        url: '#',
-        urlToImage: null,
-        publishedAt: new Date(Date.now() - 9 * 60 * 60 * 1000).toISOString(),
-        time: '9時間前',
-        source: 'モックニュース',
-        category: 'health'
-      },
-      {
-        id: 9,
-        title: '環境問題への新たな取り組み',
-        description: '環境問題に対する新たな取り組みが始まりました。',
-        url: '#',
-        urlToImage: null,
-        publishedAt: new Date(Date.now() - 10 * 60 * 60 * 1000).toISOString(),
-        time: '10時間前',
-        source: 'モックニュース',
-        category: 'general'
-      },
-      {
-        id: 10,
-        title: '教育制度改革の最新情報',
-        description: '教育制度改革に関する最新情報をお伝えします。',
-        url: '#',
-        urlToImage: null,
-        publishedAt: new Date(Date.now() - 11 * 60 * 60 * 1000).toISOString(),
-        time: '11時間前',
-        source: 'モックニュース',
-        category: 'general'
-      }
-    ].slice(0, maxItems)
+    // Throw error instead of returning mock data
+    throw error
   }
 }
 
@@ -257,44 +179,4 @@ export const fetchTechnologyNews = async (maxItems = 10) => {
 // Fetch sports news
 export const fetchSportsNews = async (maxItems = 10) => {
   return await fetchNews('sports', maxItems)
-}
-
-// Search news by keyword
-export const searchNews = async (query, maxItems = 10) => {
-  try {
-    const apiKey = getApiKey('newsApi')
-    if (!apiKey) {
-      throw new Error('NewsAPI key not configured')
-    }
-
-    const response = await fetch(
-      `${NEWS_API_ENDPOINT}/everything?q=${encodeURIComponent(query)}&language=ja&pageSize=${maxItems}&sortBy=publishedAt&apiKey=${apiKey}`
-    )
-    
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`)
-    }
-    
-    const data = await response.json()
-    
-    if (data.status === 'error') {
-      throw new Error(data.message || 'NewsAPI error')
-    }
-    
-    return data.articles.map((article, index) => ({
-      id: index + 1,
-      title: article.title,
-      description: article.description,
-      url: article.url,
-      urlToImage: article.urlToImage,
-      publishedAt: article.publishedAt,
-      time: getTimeAgo(article.publishedAt),
-      source: article.source.name,
-      category: 'search'
-    }))
-  } catch (error) {
-    console.error('Error searching news:', error)
-    // Return empty array as fallback
-    return []
-  }
 }

@@ -1,0 +1,132 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Dependencies
+node_modules
+dist
+dist-ssr
+*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Build output
+build
+dist
+out
+
+# Cache
+.cache
+.eslintcache
+.stylelintcache
+
+# Testing
+coverage
+.nyc_output
+*.lcov
+
+# Temporary files
+*.tmp
+*.temp
+.temp
+.tmp
+
+# OS files
+Thumbs.db
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# API Keys and sensitive data
+**/apiKeys.json
+secrets.json
+
+# Backup files
+*.bak
+*.backup
+*~
+
+# Lock files (optional - uncomment if you want to ignore them)
+# package-lock.json
+# yarn.lock
+# pnpm-lock.yaml
+
+# TypeScript
+*.tsbuildinfo
+
+# Optional npm cache directory
+.npm
+
+# Optional eslint cache
+.eslintcache
+
+# Optional stylelint cache
+.stylelintcache
+
+# Vite
+.vite
+vite.config.js.timestamp-*
+vite.config.ts.timestamp-*
+
+# Mac specific
+.AppleDouble
+.LSOverride
+Icon
+
+# Windows specific
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux specific
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+
+# IDEs
+*.swp
+*.swo
+*~.nib
+*.iml
+*.ipr
+*.iws
+.idea/
+.project
+.classpath
+.c9/
+*.launch
+.settings/
+*.sublime-workspace
+.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# Project specific
+pasted_content.txt
+
